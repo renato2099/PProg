@@ -1,5 +1,8 @@
 #/bin/bash
-
+if [ "$#" -ne 4 ]; then
+        echo "Usage <filePattern> <numberThreads> <rows> <cols>"
+        exit
+fi
 FILE=$1
 NTHREADS=$2
 ROWS=$3

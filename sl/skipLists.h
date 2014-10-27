@@ -14,7 +14,7 @@ public:
 	void insert(int);
 	void iter();
 	bool has(int);
-	//void search(int);	
+	void rm(int);
 };
 
 #endif

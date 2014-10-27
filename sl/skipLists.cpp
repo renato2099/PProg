@@ -36,21 +36,41 @@ void CSkiplist::insert(int v)
     for (int i = levels - 1; i >= 0; i--)
     {
     	if (cur->next[i] == NULL)
-    		printf("cur->next[%i] es null\n", i);
+    		printf("cur->next[%i] is null\n", i);
     	else
-    		printf("Aqui hubo cur->next\n");
+    		printf("cur->next was not NULL\n");
     	for (; cur->next[i] != NULL; cur = cur->next[i])
         {
-        	printf("Aqui\n");
         	if (cur->next[i]->val > v) break;
         }
         if (i <= level) 
         {
-        	printf("newNode->val=%i\n", newNode->val);
         	newNode->next[i] = cur->next[i];
         	cur->next[i] = newNode;
         }
     }
+}
+
+/** Removing an element. */
+void CSkiplist::rm(int v)
+{
+    bool f = false;
+    CSkipnode *cur = head;
+    for(int i = levels -1; i>=0; i--)
+    {
+        for (; cur->next[i] != NULL; cur = cur->next[i])
+        {
+            if (cur->next[i]->val == v)
+            {
+                cur->next[i] = cur->next[i]->next[i];
+                f = true;
+                break;
+            }
+            if (cur->next[i]->val > v) break;
+        }
+    }
+    if (f) printf("Element %i deleted.\n", v);
+    else printf("Element %i not found.\n", v);
 }
 
 /** Returns whether a particular value already exists in the skip list */

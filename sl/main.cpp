@@ -17,6 +17,12 @@ int main() {
 		printf("Si\n");
 	else
 		printf("No\n");
+	sl->rm(10);
+	sl->iter();
+	sl->rm(6);
+	sl->rm(7);
+	sl->rm(8);
+	sl->iter();
 	//printf("Hola Mu %i\n", 0);
 	return 0;
 }

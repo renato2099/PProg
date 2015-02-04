@@ -10,14 +10,23 @@ using namespace std;
 
 volatile int arr[THREADS] = {1, 0};
 volatile int ind[THREADS] = {0, 0};
-//volatile int tail = 0;
 std::atomic<int> tail = {0};
 std::mutex mtx;
+
+struct qnode{
+	struct qnode *next;
+	int state = 0;
+};
+
+std::atomic<qnode*> mcs_tail = {NULL};
 
 void initialize();
 void array_queue_lock(int tid, int n);
 void array_queue_unlock(int tid, int n);
-void insert_routine (int n, std::stack<int> *pq, int tid);
+void mcs_lock(int tid, qnode * n);
+void mcs_unlock(int tid, qnode * n);
+void insert_routine (int n, std::stack<int> *pq, int tid, int typ);
+qnode* fetch_and_set(std::atomic<qnode*>* old, qnode* neww);
 
 int main()
 {
@@ -27,9 +36,17 @@ int main()
 	
 	std::thread* tids = new std::thread[THREADS];
 	int n = 10;
+	// array_queue_lock
+	/*
 	for (int i = 0; i < THREADS; i++)
 	{
-		tids[i] = std::thread(insert_routine, n, &pq, i);
+		tids[i] = std::thread(insert_routine, n, &pq, i, 0);
+	}
+	*/
+	// mcs_lock
+	for (int i = 0; i < THREADS; i++)
+	{
+		tids[i] = std::thread(insert_routine, n, &pq, i, 1);
 	}
 	for (int i = 0; i < THREADS; i++)
 	{
@@ -42,15 +59,46 @@ int main()
 	}
 	return 0;
 }
-void insert_routine (int n, std::stack<int> *pq, int tid) {
-	array_queue_lock(tid, n);
+
+void insert_routine (int n, std::stack<int> *pq, int tid, int typ) {
 	//std::lock_guard<std::mutex> guard(mtx);
+	qnode *inner_node = new qnode;
+	typ? array_queue_lock(tid, n): mcs_lock(tid, inner_node);
 	for (int i = 0; i < n; i++) 
 	{
 		pq->push(i);
 	}
-	//pq->push(-1);
-	array_queue_unlock(tid, n);
+	typ? array_queue_unlock(tid, n): mcs_unlock(tid, inner_node);
+}
+
+void mcs_lock(int tid, qnode * n) {
+	n->next = NULL;
+
+	qnode* prev = fetch_and_set(&mcs_tail, n);
+
+	if (prev != NULL) {
+		n->state = 1;
+		prev->next = n;
+		while(n->state);
+	}
+}
+
+void mcs_unlock(int tid, qnode * n) {
+	if (n->next == NULL) {
+		if (mcs_tail.compare_exchange_weak(n, NULL))
+			return;
+		while(n->next == NULL);
+	}
+	n->next->state = 0;
+	n->next = NULL;
+}
+
+qnode* fetch_and_set(std::atomic<qnode*>* old, qnode* neww) {
+	while(true) {
+		qnode* new_old = *old;
+		if ((*old).compare_exchange_weak(new_old, neww))
+			return new_old;
+	}
 }
 
 void array_queue_lock(int tid, int n) {
